@@ -165,34 +165,31 @@
                         this.defenderReady = true;
                     })
             },
-            // Change as needed with own data
-            updateTowerData(data) {
-
-                this.towerHealth = data[towerName];
-                //this.towerDefense = data["Defense"];
-                this.towerDefenders = data[towerName + " Defenders"];
-
-                this.enemyTowerHealth = data[enemyTowerName];
-                this.enemyTowerDefenders = data[enemyTowerName + " Defenders"];
-            }
         },
         created() {
             window.onbeforeunload = () => {
                 this.socketServer.emit('disconnect');
             }
-            console.log("CREATED IS CALLED")
             // Change as needed with your own calls
-            this.socketServer.on('health', (data) => {
+            this.socketServer.on('health_update', (data) => {
                 console.log("Recievede update on health" + data)
-                this.updateTowerData(data)
+                this.towerDefenders = data[towerName + " Defenders"];
+                this.towerHealth = data[towerName]
+
+                this.enemyTowerDefenders = data[enemyTowerDefenders + " Defenders"];
+                this.enemyTowerHealth = data[enemyTowerName]
             });
 
-            this.socketServer.on('shield', (data) => {
-                this.updateTowerData(data)
+            this.socketServer.on('health_attacked', () => {
+                this.towerDefense -= 100;
+                if (this.towerDefenders < 0) {
+                    this.towerDefenders = 0;
+                    this.towerHealth += this.towerDefenders;
+                }
             });
 
-            this.socketServer.on('oponent_health', (data) => {
-                this.updateTowerData(data)
+            this.socketServer.on('shield', () => {
+                this.towerDefense += 150;
             });
         },
     });

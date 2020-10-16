@@ -6,7 +6,7 @@ client = TestClient(app)
 
 def test_read_main():
     response = client.put(
-        "/tower", json={"message": "Vlado", "tower": "Hocus", "sender": ""})
+        "/tower", json={"tower": "Hocus"})
     print(response.status_code)
     print(response.json())
 

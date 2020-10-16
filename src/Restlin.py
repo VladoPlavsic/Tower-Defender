@@ -5,7 +5,7 @@ from sender import sender
 from receiver import amqp__ini__
 from random import randint
 from database import Database
-from models.models import Item, Nickname, Defender, UserStatistics, Message
+from models.models import Item, Nickname, Defender, UserStatistics, Message, Towermodel
 import requests
 import json
 import threading
@@ -17,7 +17,7 @@ SESSION_ID = 0
 HOCUS = "localhost:666"
 POCUS = "localhost:999"
 MESSAGE = {'message': '', 'Hocus': '',
-           'Pocus': '', 'Hocus Defenders': '', 'Pocus Defenders': '', 'Defense': ''}
+           'Pocus': '', 'Hocus Defenders': '', 'Pocus Defenders': ''}
 
 app = FastAPI()
 origins = ["*"]
@@ -82,11 +82,14 @@ def get_user_statistics(nickname: Nickname):
 
 
 @app.get('/tower')
-def get_tower_data(tower):
+def get_tower_data(tower: Nickname):
     '''get_tower_data(tower: Hocus or Pocus) -> tower statistics : Item'''
     db = Database()
-    statistics = db.get_tower_statistics(tower, SESSION_ID)
-    return statistics
+    statistics = db.get_tower_statistics(tower.nickname, SESSION_ID)
+    data = Message()
+    data.shield = statistics.towerDefense
+    data.health = statistics.towerHealth
+    return data
 
 
 @app.put("/defender")
@@ -95,42 +98,48 @@ def update_defender(message: Message):
     print("UPDATE DEFENDER CALLED")
     print("*******************")
     db = Database()
-    if(message.message == "disconnect"):
-        pass
-        # db.delete_user(message.sender)
-    else:
-        updated = update_defender_help(db, message)
-        print(updated)
-        db.update_user(message.sender, updated)
+    updated = update_defender_help(db, message)
+    db.update_user(message.sender, updated)
+    if(message.message == "shield"):
+        db.update_tower_defense(SESSION_ID, -100, message.tower)
+
+
+def update_defender_help(db, message):
+    statistics = db.get_user_statistics(message.sender)
+
+    if(message.message == "attack"):
+        statistics.attack_points_generated += 100
+    elif(message.message == "shield"):
+        statistics.defense_points_generated += 150
+    return statistics
 
 
 @app.put("/tower")
 def update_tower(message: Message):
     print("*******************")
-    print("UPDATE TOWER CALLED")
+    print(
+        f"UPDATE TOWER CALLED WITH MESSAGE {message.message}\nHEALTH {message.health} AND SHIELD {message.shield}")
     print("*******************")
     db = Database()
-    updated = update_tower_help(db, message)
-    db.update_tower(SESSION_ID, updated)
-    MESSAGE["message"] = message.message
-    MESSAGE[updated.towerName] = updated.towerHealth
-    MESSAGE[updated.enemyTowerName] = updated.enemyTowerHealth
-    MESSAGE[updated.towerName + ' Defenders'] = updated.towerDefenders
-    MESSAGE[updated.enemyTowerName +
-            ' Defenders'] = updated.enemyTowerDefenders
-    MESSAGE['Defense'] = updated.towerDefense
-    sender._send(MESSAGE, ["Hocus", "Pocus"]
-                 if message.message != "defend" else [updated.towerName])
+    if(message.message == "health_attacked" or message == "shield"):
+        if(message.message == "health_attacked"):
+            db.update_tower_health(SESSION_ID, message.health, message.tower)
+        db.update_tower_defense(SESSION_ID, message.shield, message.tower)
+    else:
+        updated = update_tower_help(db, message)
+        db.update_tower(SESSION_ID, updated)
+        MESSAGE["message"] = message.message
+        MESSAGE[updated.towerName] = updated.towerHealth
+        MESSAGE[updated.enemyTowerName] = updated.enemyTowerHealth
+        MESSAGE[updated.towerName + ' Defenders'] = updated.towerDefenders
+        MESSAGE[updated.enemyTowerName +
+                ' Defenders'] = updated.enemyTowerDefenders
+        sender._send(MESSAGE, ["Hocus", "Pocus"])
 
 
 def update_tower_help(db, message):
     statistics = db.get_tower_statistics(message.tower, SESSION_ID)
-    if(message.message == "attack"):
-        # Implement different logic, we need to update database for oponent directly
-        statistics.enemyTowerHealth -= 100
-    elif(message.message == "defend"):
-        statistics.towerDefense += 150
-    elif(message.message == "connect"):
+    if(message.message == "connect"):
         statistics.towerHealth += 1000
         statistics.enemyTowerHealth += 1000
         statistics.towerDefenders += 1
@@ -141,26 +150,18 @@ def update_tower_help(db, message):
     return statistics
 
 
-def update_defender_help(db, message):
-    statistics = db.get_user_statistics(message.sender)
-
-    if(message.message == "attack"):
-        statistics.attack_points_generated += 100
-    elif(message.message == "defend"):
-        statistics.defense_points_generated += 150
-    return statistics
-
-
 def start_amqp():
 
     print(f"Started amqp")
 
     def amqp_callback(ch, method, properties, body):
+        message = json.loads(body)["message"]
         print("*******************")
-        print(f"DATA RECEIVED WITH MESSAGE {json.loads(body)['message']}")
+        print(f"DATA RECEIVED WITH MESSAGE {message}")
         print("*******************")
-        requests.put('http://localhost:1337/tower', data=body)
-        if(json.loads(body)["message"] != "connect"):
+        if(message == "connect" or message == "disconnect"):
+            requests.put('http://localhost:1337/tower', data=body)
+        if(message == "attack" or message == "shield"):
             requests.put('http://localhost:1337/defender', data=body)
 
     amqp__ini__(routing_key="Restlin", amqp_callback=amqp_callback)

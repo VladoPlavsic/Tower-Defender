@@ -6,9 +6,11 @@ class Nickname(BaseModel):
 
 
 class Message(BaseModel):
-    message: str
-    tower: str
-    sender: str
+    message: str = ''
+    tower: str = ''
+    sender: str = ''
+    health: int = 0
+    shield: int = 0
 
 
 class Item(BaseModel):

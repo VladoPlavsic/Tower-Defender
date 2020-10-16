@@ -23,7 +23,7 @@ def amqp__ini__(routing_key, amqp_callback=None):
 
     if(amqp_callback == None):
         def amqp_callback(ch, method, properties, body):
-            print("Message received")
+            print("Default callback, please make yours!")
 
     AMQP_CHANNEL.basic_consume(
         queue=QUEUE_NAME, on_message_callback=amqp_callback, auto_ack=True)

@@ -75,6 +75,20 @@ class Database:
             f"UPDATE tower SET health = {data.enemyTowerHealth} WHERE session={session_id} AND id LIKE '{enemyTowerName}'")
         self.__CONNECTION.commit()
 
+    def update_tower_health(self, session_id, health, towerName):
+        self.__CUR.execute(
+            f"UPDATE tower SET health={health} WHERE session={session_id} AND id LIKE '{towerName}'")
+        self.__CONNECTION.commit()
+
+    def update_tower_defense(self, session_id, shield, towerName):
+        if(shield < 0):
+            self.__CUR.execute(
+                f"UPDATE tower SET defense=defense + 150 WHERE session={session_id} AND id LIKE '{towerName}' RETURNING defense")
+        elif(shield > 0):
+            self.__CUR.execute(
+                f"UPDATE tower SET defense={shield} WHERE session={session_id} AND id LIKE '{towerName}'")
+        self.__CONNECTION.commit()
+
     def update_user(self, nickname, points: UserStatistics):
         self.__CUR.execute(
             f"UPDATE defender SET attack_points_generated= {points.attack_points_generated}, defense_points_generated= {points.defense_points_generated} \
