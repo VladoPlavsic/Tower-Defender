@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans:400,700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app" class="text-center">
+        <div v-if="defenderReady" id="title-quote">
+            <h1>
+                {{nickname}}, defend your tower!
+            </h1>
+        </div>
+        <div v-if="defenderReady" class="row">
+            <div class="container col-6" id="own">
+                <div class="row">
+                    <div class="col-8 container">
+                        <div class="row">
+                            <h1 class="">{{towerName}}</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 text-right">
+                                <h6 class="text-right">Tower Health</h6>
+                                <h2 class="text-right">{{towerHealth}}</h2>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="text-right">Tower Defense</h6>
+                                <h2 class="text-right">{{towerDefense}}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <svg x='0px' y='0px' viewBox="0 0 500 500" class='tower col-4' transform='scale(-1,1)'>
+                        <path :d="towerSvgPath" />
+                    </svg>
+                </div>
+            </div>
+            <div class="container col-6" id="enemy">
+                <div class="row">
+                    <svg x='0px' y='0px' viewBox="0 0 500 500" class='tower col-4'>
+                        <path :d="towerSvgPath" />
+                    </svg>
+                    <div class="col-8 container">
+                        <div class="row">
+                            <h1 class="">{{enemyTowerName}}</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="row">Enemy Health</h6>
+                                <h2 class="row">{{enemyTowerHealth}}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="btn-holder container text-center">
+                <button type="button" class="btn btn-outline-danger" @click='emitAttack'>Attack{{enemyTowerName}}</a>
+                    <button type="button" class="btn btn-outline-success" @click='emitDefend'>Defend {{towerName}}</a>
+            </div>
+        </div>
+        <div v-else>
+            <form>
+                <div class="form-group">
+                    <label for="nickname">{{nickname}}</label>
+                    <input v-model='nickname' type="username" class="form-control" id="nickname"
+                        placeholder="Enter nickname">
+                </div>
+                <button type="button" class="btn btn-primary" @click="submitNick">Submit</button>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    var socket = io()
+    var app = new Vue({
+        el: '#app',
+        data: {
+            defenderReady: false,
+            towerName: '',
+            towerHealth: 0,
+            towerDefense: 0,
+            towerDefenders: 0,
+            defenderId: '',
+            socketServer: socket,
+            nickname: '',
+            enemyTowerName: '',
+            enemyTowerHealth: 0,
+            enemyTowerDefenders: 0,
+            towerSvgPath: 'M397.564,62.201c0-1.62-1.084-3.03' +
+                '-2.656-3.434L254.697,22.856V8.294c0-4.' +
+                '584-3.707-8.294-8.293-8.294  c-4.585,0' +
+                '-8.292,3.718-8.292,8.294l0.015,125.786' +
+                'h-5.799c-1.961,0-3.548,1.588-3.548,3.5' +
+                '39v38.398H197.68V137.62  c0-1.952-1.58' +
+                '8-3.539-3.549-3.539h-28.152c-1.959,0-3' +
+                '.547,1.588-3.547,3.539v38.398h-13.719h' +
+                '-17.381V137.62  c0-1.952-1.588-3.539-3' +
+                '.547-3.539H99.632c-1.959,0-3.547,1.588' +
+                '-3.547,3.539v38.398v16.117v16.83V237.7' +
+                '  c0,8.86,7.175,16.036,16.036,16.036h2' +
+                '3.407L96.149,474.606c-0.842,4.673,0.43' +
+                '8,9.476,3.482,13.112  c3.047,3.636,7.5' +
+                '5,5.742,12.295,5.742h268.955c4.745,0,9' +
+                '.248-2.105,12.294-5.742c3.044-3.637,4.' +
+                '324-8.44,3.481-13.112  L357.28,253.736' +
+                'h23.405c8.862,0,16.038-7.176,16.038-16' +
+                '.036v-28.735v-16.83v-16.117V137.62c0-1' +
+                '.952-1.588-3.539-3.548-3.539h-28.152  ' +
+                'c-1.961,0-3.547,1.588-3.547,3.539v38.3' +
+                '98h-17.38h-13.722V137.62c0-1.952-1.586' +
+                '-3.539-3.547-3.539h-28.152  c-1.961,0-' +
+                '3.548,1.588-3.548,3.539v38.398h-31.1V1' +
+                '37.62c0-1.952-1.588-3.539-3.547-3.539h' +
+                '-5.768l-0.017-32.534l140.211-35.911  C' +
+                '396.48,65.231,397.564,63.821,397.564,6' +
+                '2.201z M284.6,333.917v69.434h-76.375v-' +
+                '69.434c0-21.09,17.09-38.186,38.195-38.' +
+                '186  C267.51,295.73,284.6,312.827,284.6,333.917z',
+            towerImageSrc: 'https://image.flaticon.com/icons/svg/90/90389.svg'
+        },
+        methods: {
+            //Delete later (getHealth)
+            getHealth() {
+                this.towerHealth += 1000
+            },
+            emitDefend() {
+                this.socketServer.emit('defend', this.nickname, this.towerName)
+            },
+            emitAttack() {
+                this.socketServer.emit('attack', this.nickname, this.towerName)
+            },
+            submitNick() {
+                var instance = axios.create({ headers: { "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Credentials": "*", "Access-Control-Allow-Origin": "*" } })
+                instance.post('http://localhost:1337/user', {
+                    nickname: this.nickname
+                })
+                    .then((response) => {
+                        if (response.data.towerName == "Error") {
+                            this.nickname = "Username taken. Please chose another one.";
+                            return;
+                        }
+                        console.log('[CLIENT] POST nickname : ' + this.nickname);
+
+                        this.defenderId = this.nickname
+                        this.towerHealth = response.data.towerHealth;
+                        this.towerDefense = response.data.towerDefense;
+                        this.towerDefenders = response.data.towerDefenders;
+
+                        this.enemyTowerDefenders = response.data.enemyTowerDefenders;
+                        this.enemyTowerName = response.data.enemyTowerName;
+                        this.enemyTowerHealth = response.data.enemyTowerHealth;
+
+                        // This part sets socket server
+                        this.socketServer.io.uri = response.data.serverUri;
+                        this.towerName = response.data.towerName
+                        this.socketServer.emit('connect');
+                        this.defenderReady = true;
+                    })
+            },
+            // Change as needed with own data
+            updateTowerData(data) {
+
+                this.towerHealth = data[towerName];
+                //this.towerDefense = data["Defense"];
+                this.towerDefenders = data[towerName + " Defenders"];
+
+                this.enemyTowerHealth = data[enemyTowerName];
+                this.enemyTowerDefenders = data[enemyTowerName + " Defenders"];
+            }
+        },
+        created() {
+            window.onbeforeunload = () => {
+                this.socketServer.emit('disconnect');
+            }
+            console.log("CREATED IS CALLED")
+            // Change as needed with your own calls
+            this.socketServer.on('health', (data) => {
+                console.log("Recievede update on health" + data)
+                this.updateTowerData(data)
+            });
+
+            this.socketServer.on('shield', (data) => {
+                this.updateTowerData(data)
+            });
+
+            this.socketServer.on('oponent_health', (data) => {
+                this.updateTowerData(data)
+            });
+        },
+    });
+</script>
+<style>
+    * {
+        font-family: 'Noto Sans', sans-serif;
+    }
+
+    #app {
+        margin: 20px;
+    }
+
+    .tower {
+        height: 200px;
+        align-content: center;
+    }
+
+    .tower+div>h1 {
+        font-size: 40px;
+        padding-top: 20px;
+    }
+
+    h2 {
+        font-weight: 700;
+    }
+
+    .btn-holder {
+        margin-top: 30px;
+    }
+
+    .btn-holder .btn {
+        margin: 0px 10px;
+        left: 50%;
+    }
+
+    #title-quote {
+        margin: 10px 0px 50px 0px;
+    }
+
+    #title-quote>h1 {
+        font-weight: 700;
+    }
+
+    #own>.row>.tower {
+        fill: cadetblue;
+    }
+
+    #enemy>.row>.tower {
+        fill: crimson;
+    }
+</style>
+
+</html>
