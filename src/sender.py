@@ -7,33 +7,32 @@ import json
 
 class Sender:
 
+    __EXCHANGE_TYPE = 'topic'
+
     def __init__(self, host, exchange_name):
-        self._HOST = host
-        self._EXCHANGE_NAME = exchange_name
-        self._EXCHANGE_TYPE = 'topic'
+        self.__HOST = host
+        self.__EXCHANGE_NAME = exchange_name
 
-        self._CONNECTION = self._connect()
-        self._CHANNEL = self._CONNECTION.channel()
+        self.__CONNECTION = self.__connect()
+        self.__CHANNEL = self.__CONNECTION.channel()
 
-        self._create_exchange()
+        self.__create_exchange()
 
-    def _connect(self):
-        return pika.BlockingConnection(pika.ConnectionParameters(host=self._HOST))
+    def __connect(self):
+        return pika.BlockingConnection(pika.ConnectionParameters(host=self.__HOST))
 
-    def _create_exchange(self):
-        self._CHANNEL.exchange_declare(
-            exchange=self._EXCHANGE_NAME, exchange_type=self._EXCHANGE_TYPE)
+    def __create_exchange(self):
+        self.__CHANNEL.exchange_declare(
+            exchange=self.__EXCHANGE_NAME, exchange_type=self.__EXCHANGE_TYPE)
 
-    def _send(self, message, routing_key):
+    def send(self, message, routing_key):
         for key in routing_key:
-            self._CHANNEL.basic_publish(exchange=self._EXCHANGE_NAME,
-                                        routing_key=key,
-                                        body=json.dumps(message))
-
-        print(f"[x] Sent {message}")
+            self.__CHANNEL.basic_publish(exchange=self.__EXCHANGE_NAME,
+                                         routing_key=key,
+                                         body=json.dumps(message))
 
     def _close_connection(self):
-        self._CONNECTION.close()
+        self.__CONNECTION.close()
 
 
 sender = Sender("localhost", "Rabbit")

@@ -62,8 +62,10 @@
                 </div>
             </div>
             <div class="btn-holder container text-center">
-                <button type="button" class="btn btn-outline-danger" @click='emitAttack'>Attack{{enemyTowerName}}</a>
-                    <button type="button" class="btn btn-outline-success" @click='emitDefend'>Defend {{towerName}}</a>
+                <button type="button" ref="attack-button" class="btn btn-outline-danger"
+                    @click='emitAttack'>Attack{{enemyTowerName}}</a>
+                    <button type="button" ref="defend-button" class="btn btn-outline-success" @click='emitDefend'>Defend
+                        {{towerName}}</a>
             </div>
         </div>
         <div v-else>
@@ -79,7 +81,7 @@
     </div>
 </body>
 <script>
-    var socket = io()
+    var socket = io({ upgrade: false });
     var app = new Vue({
         el: '#app',
         data: {
@@ -133,9 +135,15 @@
             },
             emitDefend() {
                 this.socketServer.emit('defend', this.nickname, this.towerName)
+                this.$refs["attack-button"].disabled = true;
+                this.$refs["defend-button"].disabled = true;
+                setTimeout(() => { this.$refs["attack-button"].disabled = false; this.$refs["defend-button"].disabled = false; }, 2000);
             },
             emitAttack() {
                 this.socketServer.emit('attack', this.nickname, this.towerName)
+                this.$refs["attack-button"].disabled = true;
+                this.$refs["defend-button"].disabled = true;
+                setTimeout(() => { this.$refs["attack-button"].disabled = false; this.$refs["defend-button"].disabled = false; }, 1000);
             },
             submitNick() {
                 var instance = axios.create({ headers: { "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Credentials": "*", "Access-Control-Allow-Origin": "*" } })
@@ -172,23 +180,30 @@
             }
             // Change as needed with your own calls
             this.socketServer.on('health_update', (data) => {
-                console.log("Recievede update on health" + data)
-                this.towerDefenders = data[towerName + " Defenders"];
-                this.towerHealth = data[towerName]
+                console.log("Recievede update on health")
+                this.towerDefenders = data[this.towerName + " Defenders"];
+                this.towerHealth = data[this.towerName]
 
-                this.enemyTowerDefenders = data[enemyTowerDefenders + " Defenders"];
-                this.enemyTowerHealth = data[enemyTowerName]
+                this.enemyTowerDefenders = data[this.enemyTowerName + " Defenders"];
+                this.enemyTowerHealth = data[this.enemyTowerName]
             });
 
             this.socketServer.on('health_attacked', () => {
+                console.log("Health attacked");
                 this.towerDefense -= 100;
-                if (this.towerDefenders < 0) {
-                    this.towerDefenders = 0;
-                    this.towerHealth += this.towerDefenders;
+                if (this.towerDefense < 0) {
+                    this.towerDefense = 0;
+                    this.towerHealth += this.towerDefense;
                 }
             });
 
+            this.socketServer.on("acknowledgement", (health) => {
+                console.log("Recieved ack")
+                this.enemyTowerHealth = health;
+            });
+
             this.socketServer.on('shield', () => {
+                console.log("Shield updated");
                 this.towerDefense += 150;
             });
         },

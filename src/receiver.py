@@ -1,14 +1,16 @@
 import pika
 import sys
 import logging
+import json
 
 EXCHANGE_TYPE = 'topic'
 EXCHANGE_NAME = 'Rabbit'
+HOST = 'localhost'
 
 
 def amqp__ini__(routing_key, amqp_callback=None):
     AMQP = pika.BlockingConnection(
-        pika.ConnectionParameters(host="localhost"))
+        pika.ConnectionParameters(host=HOST))
     AMQP_CHANNEL = AMQP.channel()
 
     AMQP_CHANNEL.exchange_declare(
@@ -23,7 +25,7 @@ def amqp__ini__(routing_key, amqp_callback=None):
 
     if(amqp_callback == None):
         def amqp_callback(ch, method, properties, body):
-            print("Default callback, please make yours!")
+            print("Default callback, you should make custom!")
 
     AMQP_CHANNEL.basic_consume(
         queue=QUEUE_NAME, on_message_callback=amqp_callback, auto_ack=True)

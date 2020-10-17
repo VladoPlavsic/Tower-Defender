@@ -2,67 +2,66 @@ from receiver import amqp__ini__
 import uvicorn
 import eventlet
 import socketio
-from socketio import Server
 import sys
 import os
 from sender import sender
-from models.models import Item, Message, Towermodel
+from models.models import Message
 import threading
 import json
 import requests
+from logger.logger import Logger
+
 
 PORT = 0
 TOWER = ""
-global sio
 sio = socketio.Server(cors_allowed_origins="*")
 app = socketio.WSGIApp(sio)
 MESSAGE = {'message': '', 'tower': '', 'sender': '', 'health': 0, 'shield': 0}
 
+logger = None
+
+# ON CONNECT EVENT
+
 
 @ sio.event
 def connect(sid, environ):
-    print("*******************")
-    print(f"CONNECT EVENT RAISED SIO: {sio}")
-    print("*******************")
+    logger.log_info(f"CONNECT EVENT RAISED SIO: {sio}")
     MESSAGE['message'] = 'connect'
     MESSAGE['tower'] = TOWER
-    sender._send(MESSAGE, ["Restlin"])
+    sender.send(MESSAGE, ["Restlin"])
     sio.enter_room(sid, TOWER)
 
 
+# ON ATTACK EVENT
 @ sio.event
 def attack(sid, nickname, towername):
-    print("*******************")
-    print(f"ATTACK EVENT RAISED FROM USER {nickname}")
-    print("*******************")
+    logger.log_info(f"ATTACK EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'attack'
     MESSAGE['tower'] = towername
     MESSAGE['sender'] = nickname
-    sender._send(MESSAGE, ["Hocus", "Restlin"] if towername ==
-                 "Pocus" else ["Pocus", "Restlin"])
+    sender.send(MESSAGE, ["Hocus", "Restlin"] if towername ==
+                "Pocus" else ["Pocus", "Restlin"])
 
 
+# ON DEFEND EVENT
 @ sio.event
 def defend(sid, nickname, towername):
-    print("*******************")
-    print(f"DEFEND EVENT RAISED FROM USER {nickname}")
-    print("*******************")
+    logger.log_info(f"DEFEND EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'shield'
     MESSAGE['tower'] = towername
     MESSAGE['sender'] = nickname
     sio.emit(MESSAGE['message'], room=TOWER)
-    sender._send(MESSAGE, ['Restlin'])
+    sender.send(MESSAGE, ['Restlin'])
 
 
+# ON DISCONNECT EVENT
 @ sio.event
 def disconnect(sid):
-    print("*******************")
-    print(f"DISCONNECT EVENT RAISED WITH SID {sid}")
-    print("*******************")
+    logger.log_info(f"DISCONNECT EVENT RAISED WITH SID {sid}")
     MESSAGE['message'] = 'disconnect'
     MESSAGE['tower'] = TOWER
     MESSAGE['sender'] = sid
-    sender._send(MESSAGE, ['Restlin'])
+    sender.send(MESSAGE, ['Restlin'])
     sio.leave_room(sid, TOWER)
 
 
@@ -70,6 +69,7 @@ def start_elf(_app, _PORT):
     eventlet.wsgi.server(eventlet.listen(('localhost', _PORT)), _app)
 
 
+# DEFINING AMQP CONSUMER CALLBACK AND STARTING CONSUMER
 def start_amqp(sio):
 
     print(f"Started amqp")
@@ -80,10 +80,7 @@ def start_amqp(sio):
         if(message['message'] == 'connect' or message['message'] == 'disconnect'):
             message['message'] = 'health_update'
             sio.emit(message['message'], message, room=TOWER)
-
-            print("*******************")
-            print(f"EMITTED INTERNALY {message['message']}")
-            print("*******************")
+            logger.log_info(f"EMITTED INTERNALY {message['message']}")
         # on atacked
         elif(message['message'] == 'attack'):
             message['message'] = 'health_attacked'
@@ -95,6 +92,8 @@ def start_amqp(sio):
             data = json.loads(data.content)
 
             data['shield'] -= 100
+            message['health'] = data['health']
+            message['shield'] = data['shield']
 
             if(data['shield'] < 0):
                 data['health'] += data['shield']
@@ -111,18 +110,17 @@ def start_amqp(sio):
             # acknowledge this to oponent that attacked you by sending HP
             '''
             print("*******************")
-            print(f"EMITTED INTERNALY {message['message']}")
+            print(f"SENT {message['message']} TO {receive}")
             print("*******************")
             '''
+
         # on defend
         elif(message['message'] == 'defend'):
             message['message'] = 'shield'
             sio.emit(message['message'], room=TOWER)
             requests.put('http://localhost:1337/tower', data=message)
 
-            print("*******************")
-            print(f"EMITTED INTERNALY {message['message']}")
-            print("*******************")
+            logger.log_info(f"EMITTED INTERNALY {message['message']}")
 
         # ON ACKNOWLEDGEMENT THAT YOU'VE BEEN ATTACKED FROM OPONENT
 
@@ -132,6 +130,7 @@ def start_amqp(sio):
 if __name__ == '__main__':
     try:
         PORT = int(sys.argv[1])
+        logger = Logger(filename=f"tower{PORT}.log")
         TOWER = "Hocus" if PORT == 666 else "Pocus"
         amqp = threading.Thread(target=start_amqp, args=(sio,))
         elf = threading.Thread(target=start_elf, args=(app, PORT))
