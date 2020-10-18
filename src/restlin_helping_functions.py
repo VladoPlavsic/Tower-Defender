@@ -6,8 +6,8 @@ import requests
 from receiver import amqp__ini__
 from logger.logger import Logger
 
-HOCUS = "localhost:666"
-POCUS = "localhost:999"
+HOCUS = "127.0.0.1:666"
+POCUS = "127.0.0.1:999"
 
 logger = Logger(filename="restlin.log")
 

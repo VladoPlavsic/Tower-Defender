@@ -134,13 +134,13 @@
                 this.towerHealth += 1000
             },
             emitDefend() {
-                this.socketServer.emit('defend', this.nickname, this.towerName)
+                this.socketServer.emit('defend', this.nickname)
                 this.$refs["attack-button"].disabled = true;
                 this.$refs["defend-button"].disabled = true;
                 setTimeout(() => { this.$refs["attack-button"].disabled = false; this.$refs["defend-button"].disabled = false; }, 2000);
             },
             emitAttack() {
-                this.socketServer.emit('attack', this.nickname, this.towerName)
+                this.socketServer.emit('attack', this.nickname)
                 this.$refs["attack-button"].disabled = true;
                 this.$refs["defend-button"].disabled = true;
                 setTimeout(() => { this.$refs["attack-button"].disabled = false; this.$refs["defend-button"].disabled = false; }, 1000);
@@ -167,9 +167,10 @@
                         this.enemyTowerHealth = response.data.enemyTowerHealth;
 
                         // This part sets socket server
-                        this.socketServer.io.uri = response.data.serverUri;
+                        this.socketServer.io.uri = "http://" + response.data.serverUri;
                         this.towerName = response.data.towerName
                         this.socketServer.emit('connect');
+                        console.log(this.socketServer.io.uri)
                         this.defenderReady = true;
                     })
             },
@@ -178,17 +179,25 @@
             window.onbeforeunload = () => {
                 this.socketServer.emit('disconnect');
             }
-            // Change as needed with your own calls
-            this.socketServer.on('health_update', (data) => {
-                console.log("Recievede update on health")
-                this.towerDefenders = data[this.towerName + " Defenders"];
-                this.towerHealth = data[this.towerName]
 
-                this.enemyTowerDefenders = data[this.enemyTowerName + " Defenders"];
-                this.enemyTowerHealth = data[this.enemyTowerName]
+            console.log("CREATED IS INVOKED")
+            console.log(this.socketServer.io.uri)
+            // Change as needed with your own calls
+            this.socketServer.on('health_update', function (data) {
+                console.log("Recievede update on health")
+                if (data[this.towerName] == -5000) {
+                    this.enemyTowerHealth = data[this.enemyTowerName]
+                }
+                else {
+                    this.towerDefenders = data[this.towerName + " Defenders"];
+                    this.towerHealth = data[this.towerName]
+
+                    this.enemyTowerDefenders = data[this.enemyTowerName + " Defenders"];
+                    this.enemyTowerHealth = data[this.enemyTowerName]
+                }
             });
 
-            this.socketServer.on('health_attacked', () => {
+            this.socketServer.on('health_attacked', function () {
                 console.log("Health attacked");
                 this.towerDefense -= 100;
                 if (this.towerDefense < 0) {
@@ -197,12 +206,7 @@
                 }
             });
 
-            this.socketServer.on("acknowledgement", (health) => {
-                console.log("Recieved ack")
-                this.enemyTowerHealth = health;
-            });
-
-            this.socketServer.on('shield', () => {
+            this.socketServer.on('shield', function () {
                 console.log("Shield updated");
                 this.towerDefense += 150;
             });

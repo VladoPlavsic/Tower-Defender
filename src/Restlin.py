@@ -15,8 +15,8 @@ from restlin_helping_functions import HOCUS, POCUS, create_user_from_nick, chose
 SESSION_ID = 0
 HOST = 'localhost'
 PORT = 1337
-MESSAGE = {'message': '', 'Hocus': '',
-           'Pocus': '', 'Hocus Defenders': '', 'Pocus Defenders': ''}
+MESSAGE = {'message': '', 'Hocus': 0,
+           'Pocus': 0, 'Hocus Defenders': 0, 'Pocus Defenders': 0}
 
 app = FastAPI()
 

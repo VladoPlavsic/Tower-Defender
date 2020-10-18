@@ -28,10 +28,6 @@ def amqp__ini__(routing_key, amqp_callback=None):
             print("Default callback, you should make custom!")
 
     AMQP_CHANNEL.basic_consume(
-        queue=QUEUE_NAME, on_message_callback=amqp_callback, auto_ack=True)
-
-    print(' [*] Waiting for messages. To exit press CTRL+C')
-    print(
-        f'EXCHANGE NAME: {EXCHANGE_NAME}\n ROUTING KEY: {routing_key}')
+        queue=QUEUE_NAME, on_message_callback=amqp_callback)
 
     AMQP_CHANNEL.start_consuming()

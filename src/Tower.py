@@ -10,19 +10,20 @@ import threading
 import json
 import requests
 from logger.logger import Logger
-
+import pika
 
 PORT = 0
 TOWER = ""
 sio = socketio.Server(cors_allowed_origins="*")
 app = socketio.WSGIApp(sio)
 MESSAGE = {'message': '', 'tower': '', 'sender': '', 'health': 0, 'shield': 0}
+MESSAGE_ATTACKED = {'message': '', 'Hocus': 0,
+                    'Pocus': 0, 'Hocus Defenders': 0, 'Pocus Defenders': 0}
 
 logger = None
 
+
 # ON CONNECT EVENT
-
-
 @ sio.event
 def connect(sid, environ):
     logger.log_info(f"CONNECT EVENT RAISED SIO: {sio}")
@@ -34,21 +35,31 @@ def connect(sid, environ):
 
 # ON ATTACK EVENT
 @ sio.event
-def attack(sid, nickname, towername):
+def attack(sid, nickname):
     logger.log_info(f"ATTACK EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'attack'
-    MESSAGE['tower'] = towername
+    MESSAGE['tower'] = TOWER
     MESSAGE['sender'] = nickname
-    sender.send(MESSAGE, ["Hocus", "Restlin"] if towername ==
-                "Pocus" else ["Pocus", "Restlin"])
+    sender.create_consumer(TOWER)
+    response = sender.send_with_ack(MESSAGE, "Hocus" if TOWER ==
+                                    "Pocus" else "Pocus")
+    response = json.loads(response)
+    MESSAGE_ATTACKED['message'] = 'health_update'
+    MESSAGE_ATTACKED[response['tower']] = response['health']
+    MESSAGE_ATTACKED[TOWER] = -5000
+    MESSAGE_ATTACKED[response['tower'] + ' Defenders'] = -5000
+    MESSAGE_ATTACKED[TOWER + ' Defenders'] = -5000
+    sio.emit(MESSAGE_ATTACKED, room=TOWER)
+    print(f"EMMITED INTERNALY {MESSAGE_ATTACKED}")
+    sender.send(MESSAGE, ["Restlin"])
 
 
 # ON DEFEND EVENT
 @ sio.event
-def defend(sid, nickname, towername):
+def defend(sid, nickname):
     logger.log_info(f"DEFEND EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'shield'
-    MESSAGE['tower'] = towername
+    MESSAGE['tower'] = TOWER
     MESSAGE['sender'] = nickname
     sio.emit(MESSAGE['message'], room=TOWER)
     sender.send(MESSAGE, ['Restlin'])
@@ -106,13 +117,15 @@ def start_amqp(sio):
             else:
                 requests.put('http://localhost:1337/tower',
                              data=json.dumps(message))
+            routing_key = "Hocus" if TOWER == "Pocus" else "Pocus"
 
+            # SET SHIELD OF NEW MESSAGE TO BE 0 BECAUSE ON RESPONSE WE DON'T ATTACKER TO KNOW OUR SHIELD
+            message['shield'] = 0
+            ch.basic_publish(exchange="Rabbit", routing_key=routing_key,
+                             properties=pika.BasicProperties(
+                                 correlation_id=properties.correlation_id),
+                             body=json.dumps(message))
             # acknowledge this to oponent that attacked you by sending HP
-            '''
-            print("*******************")
-            print(f"SENT {message['message']} TO {receive}")
-            print("*******************")
-            '''
 
         # on defend
         elif(message['message'] == 'defend'):
@@ -121,8 +134,6 @@ def start_amqp(sio):
             requests.put('http://localhost:1337/tower', data=message)
 
             logger.log_info(f"EMITTED INTERNALY {message['message']}")
-
-        # ON ACKNOWLEDGEMENT THAT YOU'VE BEEN ATTACKED FROM OPONENT
 
     amqp__ini__(routing_key=TOWER, amqp_callback=amqp_callback)
 
