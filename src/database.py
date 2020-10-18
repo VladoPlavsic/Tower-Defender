@@ -7,6 +7,15 @@ class Database:
     '''
     DATABASE NAME, CREDIENTALS, HOST and PORT 
     '''
+    # DOCKER SETUP
+    '''
+    __DB_NAME = 'app'
+    __PASSWORD = 'docker'
+    __USER = 'docker'
+    __HOST = 'localhost'
+    __PORT = '32768'
+    '''
+
     __DB_NAME = 'app'
     __PASSWORD = 'newpassword98'
     __USER = 'postgres'
