@@ -70,7 +70,7 @@ def update_tower_help(db, message, session_id):
 
 
 def start_unicorn(app, host, port):
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, log_level='error')
 
 
 def start_amqp():

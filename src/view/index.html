@@ -180,9 +180,6 @@
                 this.socketServer.emit('disconnect');
             }
 
-            console.log("CREATED IS INVOKED")
-            console.log(this.socketServer.io.uri)
-            // Change as needed with your own calls
             this.socketServer.on('health_update', (data) => {
                 console.log("Recievede update on health")
                 if (data[this.towerName] == -5000) {
@@ -201,8 +198,8 @@
                 console.log("Health attacked");
                 this.towerDefense -= 100;
                 if (this.towerDefense < 0) {
-                    this.towerDefense = 0;
                     this.towerHealth += this.towerDefense;
+                    this.towerDefense = 0;
                 }
             });
 
