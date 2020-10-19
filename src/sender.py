@@ -18,16 +18,16 @@ class Sender:
         self.__CHANNEL = self.__CONNECTION.channel()
         self.__RESPONSE = None
 
-        # IF WE WANT ACK
+    # IF WE WANT ACK
 
     def create_consumer(self, routing_key):
         self.__create_exchange()
         result = self.__CHANNEL.queue_declare(queue='', exclusive=True)
-        self.callback_queue = result.method.queue
+        self.__CALLBACK_QUEUE = result.method.queue
         self.__CHANNEL.queue_bind(
-            exchange=self.__EXCHANGE_NAME, queue=self.callback_queue, routing_key=routing_key)
+            exchange=self.__EXCHANGE_NAME, queue=self.__CALLBACK_QUEUE, routing_key=routing_key)
         self.__CHANNEL.basic_consume(
-            queue=self.callback_queue,
+            queue=self.__CALLBACK_QUEUE,
             on_message_callback=self.on_response,
             auto_ack=True)
 
@@ -60,7 +60,10 @@ class Sender:
         while self.__RESPONSE is None:
             self.__CONNECTION.process_data_events()
 
-        return self.__RESPONSE
+        temp = self.__RESPONSE
+        self.__RESPONSE = None
+
+        return temp
 
     def _close_connection(self):
         self.__CONNECTION.close()

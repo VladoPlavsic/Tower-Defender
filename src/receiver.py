@@ -1,7 +1,6 @@
 import pika
 import sys
 import logging
-import json
 
 EXCHANGE_TYPE = 'topic'
 EXCHANGE_NAME = 'Rabbit'

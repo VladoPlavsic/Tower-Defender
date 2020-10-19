@@ -1,19 +1,32 @@
-'''
-TO START 
-python3 Tower.py <port-number> (SHOULD BE 666 or 999)
-'''
 from receiver import amqp__ini__
-import uvicorn
-import eventlet
-import socketio
+import tornado.ioloop
+import tornado.web
 import sys
 import os
 from sender import sender
+from models.models import Message
 import threading
 import json
 import requests
 from logger.logger import Logger
 import pika
+from tornado.options import define, options, parse_command_line
+import socketio
+
+sio = socketio.AsyncServer(async_mode='tornado')
+
+
+def main():
+    parse_command_line()
+    app = tornado.web.Application(
+        [
+            (r"/socket.io/", socketio.get_tornado_handler(sio)),
+        ],
+    )
+    app.listen(PORT)
+    tornado.ioloop.IOLoop.current().start()
+    print("STARTED TORNADO")
+
 
 PORT = 0
 TOWER = ""
@@ -28,7 +41,7 @@ logger = None
 
 # ON CONNECT EVENT
 @ sio.event
-def connect(sid, environ):
+async def connect(sid, environ):
     logger.log_info(f"CONNECT EVENT RAISED WITH SID: {sio}")
     MESSAGE['message'] = 'connect'
     MESSAGE['tower'] = TOWER
@@ -39,7 +52,7 @@ def connect(sid, environ):
 
 # ON ATTACK EVENT
 @ sio.event
-def attack(sid, nickname):
+async def attack(sid, nickname):
     logger.log_info(f"ATTACK EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'attack'
     MESSAGE['tower'] = TOWER
@@ -61,7 +74,7 @@ def attack(sid, nickname):
 
 # ON DEFEND EVENT
 @ sio.event
-def defend(sid, nickname):
+async def defend(sid, nickname):
     logger.log_info(f"DEFEND EVENT RAISED FROM USER {nickname}")
     MESSAGE['message'] = 'shield'
     MESSAGE['tower'] = TOWER
@@ -73,7 +86,7 @@ def defend(sid, nickname):
 
 # ON DISCONNECT EVENT
 @ sio.event
-def disconnect(sid):
+async def disconnect(sid):
     logger.log_info(f"DISCONNECT EVENT RAISED WITH SID {sid}")
     MESSAGE['message'] = 'disconnect'
     MESSAGE['tower'] = TOWER
@@ -82,12 +95,14 @@ def disconnect(sid):
     sio.leave_room(sid, TOWER)
     print("DISCONNECTED")
 
-
+'''
 def start_elf(_app, _PORT):
     eventlet.wsgi.server(eventlet.listen(('localhost', _PORT)), _app)
-
+'''
 
 # DEFINING AMQP CONSUMER CALLBACK AND STARTING CONSUMER
+
+
 def start_amqp(sio):
 
     print(f"Started amqp")
@@ -147,9 +162,13 @@ if __name__ == '__main__':
         logger = Logger(filename=f"tower{PORT}.log")
         TOWER = "Hocus" if PORT == 666 else "Pocus"
         amqp = threading.Thread(target=start_amqp, args=(sio,))
-        elf = threading.Thread(target=start_elf, args=(app, PORT))
+        #elf = threading.Thread(target=start_elf, args=(app, PORT))
+        # elf.start()
+
         # uvicorn.run(app, host='localhost', port=PORT)
-        elf.start()
+        # eventlet.wsgi.server(eventlet.listen(('localhost', PORT)), app)
+
+        main()
         amqp.start()
     except KeyboardInterrupt:
         try:

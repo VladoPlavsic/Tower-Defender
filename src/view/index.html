@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.1/socket.io.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
@@ -175,7 +175,7 @@
                     })
             },
         },
-        created() {
+        created: function () {
             window.onbeforeunload = () => {
                 this.socketServer.emit('disconnect');
             }
@@ -183,7 +183,7 @@
             console.log("CREATED IS INVOKED")
             console.log(this.socketServer.io.uri)
             // Change as needed with your own calls
-            this.socketServer.on('health_update', function (data) {
+            this.socketServer.on('health_update', (data) => {
                 console.log("Recievede update on health")
                 if (data[this.towerName] == -5000) {
                     this.enemyTowerHealth = data[this.enemyTowerName]
@@ -197,7 +197,7 @@
                 }
             });
 
-            this.socketServer.on('health_attacked', function () {
+            this.socketServer.on('health_attacked', () => {
                 console.log("Health attacked");
                 this.towerDefense -= 100;
                 if (this.towerDefense < 0) {
@@ -206,7 +206,7 @@
                 }
             });
 
-            this.socketServer.on('shield', function () {
+            this.socketServer.on('shield', () => {
                 console.log("Shield updated");
                 this.towerDefense += 150;
             });
